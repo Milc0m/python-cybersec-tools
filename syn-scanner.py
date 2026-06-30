@@ -114,7 +114,7 @@ def port_scan_worker():
         q.task_done()
 
 
-git for _ in range(threads_count):
+for _ in range(threads_count):
     thread = threading.Thread(target=port_scan_worker)
     thread.daemon = True
     thread.start()
