@@ -88,8 +88,6 @@ else:
 def port_scan_worker():
     while not q.empty():
         port = q.get()
-        # 1. Конструюємо пакет вручну: IP шар + TCP шар із прапорцем S (SYN)
-        # sport=RandShort() вибирає випадковий вільний порт на твому Mac для відправки
         packet = IP(dst=target_ip) / TCP(sport=RandShort(),
                                          dport=port, flags="S")
         response = sr1(packet, timeout=1, verbose=False)
@@ -98,28 +96,25 @@ def port_scan_worker():
             if show_closed:
                 with print_lock:
                     print(
-                        f"[-] Порт {port}: ФІЛЬТРУЄТЬСЯ (сервер взагалі не відповів, можливо працює Фаєрвол)")
+                        f"[-] Port {port}: FILTERED (Host did not respond, possibly due to a firewall)")
         elif response.haslayer(TCP):
-            # Перевіряємо, які прапорці прислав сервер у відповідь
-            if response[TCP].flags == "SA":  # SYN-ACK (Порт відкритий!)
+            if response[TCP].flags == "SA":
                 with print_lock:
-                    print(f"[+] Порт {port}: ВІДКРИТИЙ (Отримано SYN-ACK)")
+                    print(f"[+] Port {port}: OPEN (Received SYN-ACK)")
 
-                # Обов'язково відправляємо RST (Reset), щоб миттєво розірвати з'єднання і не смітити в логах!
                 rst_packet = IP(dst=target_ip) / \
                     TCP(sport=packet[TCP].sport, dport=port, flags="R")
                 send(rst_packet, verbose=False)
 
-            elif response[TCP].flags == "RA":  # RST-ACK (Порт закритий)
+            elif response[TCP].flags == "RA":
                 if show_closed:
                     with print_lock:
-                        print(f"[-] Порт {port}: закритий (Отримано RST-ACK)")
+                        print(f"[-] Port {port}: CLOSED (Received RST-ACK)")
 
         q.task_done()
 
 
-# 4. Starting threads
-for _ in range(threads_count):
+git for _ in range(threads_count):
     thread = threading.Thread(target=port_scan_worker)
     thread.daemon = True
     thread.start()
